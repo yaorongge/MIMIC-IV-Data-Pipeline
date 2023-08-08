@@ -1,5 +1,8 @@
-mimic-iv-1.0
+data/
+mimiciv
 scrap
 *.gzip
 *.csv.gz
 *summary*.txt
+*.pyc
+.DS_Store
