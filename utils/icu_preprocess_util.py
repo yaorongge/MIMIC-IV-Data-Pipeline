@@ -207,11 +207,11 @@ def preproc_chart(dataset_path: str, cohort_path:str, time_col:str, dtypes: dict
         del chunk_merged['intime']
         chunk_merged=chunk_merged.dropna()
         chunk_merged=chunk_merged.drop_duplicates()
-        if df_cohort.empty:
-            df_cohort=chunk_merged
-        else:
-            df_cohort=df_cohort.append(chunk_merged, ignore_index=True)
-        
+#        if df_cohort.empty:
+#            df_cohort=chunk_merged
+#        else:
+#            df_cohort=df_cohort.append(chunk_merged, ignore_index=True)
+        df_cohort = pd.concat([df_cohort, chunk_merged], ignore_index=True)        
         
 #         nitem.append(chunk_merged.itemid.dropna().unique())
 #         nstay=nstay.append(chunk_merged.stay_id.unique())
@@ -318,3 +318,6 @@ def pivot_cohort(df: pd.DataFrame, prefix: str, target_col:str, values='values',
 
     pivot_df.columns = [prefix + str(i) for i in pivot_df.columns]
     return pivot_df
+
+
+#preproc_chart("/Users/yge/Documents/GitHub/MIMIC-IV-Data-Pipeline/mimiciv/2.2/icu/chartevents.csv.gz", '/Users/yge/Documents/GitHub/MIMIC-IV-Data-Pipeline/data/cohort/cohort_icu_length_of_stay_7__I50.csv.gz', 'charttime', dtypes=None, usecols=['stay_id','charttime','itemid','valuenum','valueuom'])

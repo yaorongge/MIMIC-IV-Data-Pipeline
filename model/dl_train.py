@@ -36,7 +36,7 @@ import argparse
 from torch.autograd import Variable
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
-get_ipython().run_line_magic('matplotlib', 'inline')
+#get_ipython().run_line_magic('matplotlib', 'inline')
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -500,3 +500,4 @@ class DL_models():
         with open('./data/output/'+'outputDict', 'wb') as fp:
                pickle.dump(output_df, fp)
 
+#model=DL_models(False,True,False,False,False,False,True,'Hybrid CNN',0,True,model_name='attn_icu_read',train=True)

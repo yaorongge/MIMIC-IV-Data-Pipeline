@@ -60,11 +60,13 @@ class Generator():
         data['admittime'] = pd.to_datetime(data['admittime'])
         data['dischtime'] = pd.to_datetime(data['dischtime'])
         data['los']=pd.to_timedelta(data['dischtime']-data['admittime'],unit='h')
-        data['los']=data['los'].astype(str)
-        data[['days', 'dummy','hours']] = data['los'].str.split(' ', -1, expand=True)
-        data[['hours','min','sec']] = data['hours'].str.split(':', -1, expand=True)
+#        data['los']=data['los'].astype(str)
+#        data[['days', 'dummy','hours']] = data['los'].str.split(' ', -1, expand=True)
+#        data[['hours','min','sec']] = data['hours'].str.split(':', -1, expand=True)
+        data['days'] = data['los'].dt.days
+        data['hours'] = (pd.to_numeric(data['los'].dt.seconds)/3600).astype('int64')
         data['los']=pd.to_numeric(data['days'])*24+pd.to_numeric(data['hours'])
-        data=data.drop(columns=['days', 'dummy','hours','min','sec'])
+        data=data.drop(columns=['days', 'hours'])
         data=data[data['los']>0]
         data['Age']=data['Age'].astype(int)
         return data
@@ -78,10 +80,12 @@ class Generator():
     def generate_proc(self):
         proc=pd.read_csv("./data/features/preproc_proc.csv.gz", compression='gzip', header=0, index_col=None)
         proc=proc[proc['hadm_id'].isin(self.data['hadm_id'])]
-        proc[['start_days', 'dummy','start_hours']] = proc['proc_time_from_admit'].str.split(' ', -1, expand=True)
-        proc[['start_hours','min','sec']] = proc['start_hours'].str.split(':', -1, expand=True)
-        proc['start_time']=pd.to_numeric(proc['start_days'])*24+pd.to_numeric(proc['start_hours'])
-        proc=proc.drop(columns=['start_days', 'dummy','start_hours','min','sec'])
+#        proc[['start_days', 'dummy', 'hours']] = proc['proc_time_from_admit'].str.split(' ', -1, expand=True)
+        proc['start_days'] = pd.to_timedelta(proc['proc_time_from_admit']).dt.days
+#        proc[['start_hours','min','sec']] = proc['start_hours'].str.split(':', -1, expand=True)
+        proc['start_hours'] = pd.to_timedelta(proc['proc_time_from_admit']).dt.seconds
+        proc['start_time']=pd.to_numeric(proc['start_days'])*24+pd.to_numeric(proc['start_hours'])/3600
+        proc=proc.drop(columns=['start_days', 'start_hours'])
         proc=proc[proc['start_time']>=0]
         
         ###Remove where event time is after discharge time
@@ -97,10 +101,12 @@ class Generator():
         final=pd.DataFrame()
         for labs in tqdm(pd.read_csv("./data/features/preproc_labs.csv.gz", compression='gzip', header=0, index_col=None,chunksize=chunksize)):
             labs=labs[labs['hadm_id'].isin(self.data['hadm_id'])]
-            labs[['start_days', 'dummy','start_hours']] = labs['lab_time_from_admit'].str.split(' ', -1, expand=True)
-            labs[['start_hours','min','sec']] = labs['start_hours'].str.split(':', -1, expand=True)
-            labs['start_time']=pd.to_numeric(labs['start_days'])*24+pd.to_numeric(labs['start_hours'])
-            labs=labs.drop(columns=['start_days', 'dummy','start_hours','min','sec'])
+#            labs[['start_days', 'dummy','start_hours']] = labs['lab_time_from_admit'].str.split(' ', -1, expand=True)
+#            labs[['start_hours','min','sec']] = labs['start_hours'].str.split(':', -1, expand=True)
+            labs['start_days'] = pd.to_timedelta(labs['lab_time_from_admit']).dt.days
+            labs['start_hours'] = pd.to_timedelta(labs['lab_time_from_admit']).dt.seconds
+            labs['start_time']=pd.to_numeric(labs['start_days'])*24+pd.to_numeric(labs['start_hours'])/3600
+            labs=labs.drop(columns=['start_days', 'start_hours'])
             labs=labs[labs['start_time']>=0]
 
             ###Remove where event time is after discharge time
@@ -109,22 +115,27 @@ class Generator():
             labs=labs[labs['sanity']>0]
             del labs['sanity']
             
-            if final.empty:
-                final=labs
-            else:
-                final=final.append(labs, ignore_index=True)
+#            if final.empty:
+#                final=labs
+#            else:
+#                final=final.append(labs, ignore_index=True)
+            final = pd.concat([final, labs], ignore_index=True)
 
         self.labs=final
         
     def generate_meds(self):
         meds=pd.read_csv("./data/features/preproc_med.csv.gz", compression='gzip', header=0, index_col=None)
-        meds[['start_days', 'dummy','start_hours']] = meds['start_hours_from_admit'].str.split(' ', -1, expand=True)
-        meds[['start_hours','min','sec']] = meds['start_hours'].str.split(':', -1, expand=True)
-        meds['start_time']=pd.to_numeric(meds['start_days'])*24+pd.to_numeric(meds['start_hours'])
-        meds[['start_days', 'dummy','start_hours']] = meds['stop_hours_from_admit'].str.split(' ', -1, expand=True)
-        meds[['start_hours','min','sec']] = meds['start_hours'].str.split(':', -1, expand=True)
-        meds['stop_time']=pd.to_numeric(meds['start_days'])*24+pd.to_numeric(meds['start_hours'])
-        meds=meds.drop(columns=['start_days', 'dummy','start_hours','min','sec'])
+#        meds[['start_days', 'dummy','start_hours']] = meds['start_hours_from_admit'].str.split(' ', -1, expand=True)
+#        meds[['start_hours','min','sec']] = meds['start_hours'].str.split(':', -1, expand=True)
+        meds['start_days'] = pd.to_timedelta(meds['start_hours_from_admit']).dt.days
+        meds['start_hours'] = pd.to_timedelta(meds['start_hours_from_admit']).dt.seconds
+        meds['start_time']=pd.to_numeric(meds['start_days'])*24+pd.to_numeric(meds['start_hours'])/3600
+#        meds[['start_days', 'dummy','start_hours']] = meds['stop_hours_from_admit'].str.split(' ', -1, expand=True)
+#        meds[['start_hours','min','sec']] = meds['start_hours'].str.split(':', -1, expand=True)
+        meds['start_days'] = pd.to_timedelta(meds['stop_hours_from_admit']).dt.days
+        meds['start_hours'] = pd.to_timedelta(meds['stop_hours_from_admit']).dt.seconds
+        meds['stop_time']=pd.to_numeric(meds['start_days'])*24+pd.to_numeric(meds['start_hours'])/3600
+        meds=meds.drop(columns=['start_days', 'start_hours'])
         #####Sanity check
         meds['sanity']=meds['stop_time']-meds['start_time']
         meds=meds[meds['sanity']>0]
@@ -258,30 +269,33 @@ class Generator():
                 sub_meds=sub_meds.reset_index()
                 sub_meds['start_time']=t
                 sub_meds['stop_time']=sub_meds['stop_time']/bucket
-                if final_meds.empty:
-                    final_meds=sub_meds
-                else:
-                    final_meds=final_meds.append(sub_meds)
+#                if final_meds.empty:
+#                    final_meds=sub_meds
+#                else:
+#                    final_meds=final_meds.append(sub_meds)
+                final_meds = pd.concat([final_meds, sub_meds], ignore_index=True)
             
             ###PROC
              if(self.feat_proc):
                 sub_proc=self.proc[(self.proc['start_time']>=i) & (self.proc['start_time']<i+bucket)].groupby(['hadm_id','icd_code']).agg({'subject_id':'max'})
                 sub_proc=sub_proc.reset_index()
                 sub_proc['start_time']=t
-                if final_proc.empty:
-                    final_proc=sub_proc
-                else:    
-                    final_proc=final_proc.append(sub_proc)
+#                if final_proc.empty:
+#                    final_proc=sub_proc
+#                else:    
+#                    final_proc=final_proc.append(sub_proc)
+                final_proc = pd.concat([final_proc, sub_proc], ignore_index=True)
                     
             ###LABS
              if(self.feat_lab):
                 sub_labs=self.labs[(self.labs['start_time']>=i) & (self.labs['start_time']<i+bucket)].groupby(['hadm_id','itemid']).agg({'subject_id':'max','valuenum':np.nanmean})
                 sub_labs=sub_labs.reset_index()
                 sub_labs['start_time']=t
-                if final_labs.empty:
-                    final_labs=sub_labs
-                else:    
-                    final_labs=final_labs.append(sub_labs)
+#                if final_labs.empty:
+#                    final_labs=sub_labs
+#                else:    
+#                    final_labs=final_labs.append(sub_labs)
+                final_labs = pd.concat([final_labs, sub_labs], ignore_index=True)
             
              t=t+1
         los=int(self.los/bucket)
@@ -326,7 +340,7 @@ class Generator():
         for hid in tqdm(self.hids):
             grp=self.data[self.data['hadm_id']==hid]
             demo_csv=grp[['Age','gender','ethnicity','insurance']]
-            if not os.path.exists("./data/csv"+str(hid)):
+            if not os.path.exists("./data/csv/"+str(hid)):
                 os.makedirs("./data/csv/"+str(hid))
             demo_csv.to_csv('./data/csv/'+str(hid)+'/demo.csv',index=False)
             
@@ -340,6 +354,10 @@ class Generator():
                     val=val.fillna(0)
                     val.columns=pd.MultiIndex.from_product([["MEDS"], val.columns])
                 else:
+                    #Apparently, the dose_val_rx is NaN sometimes (this should be handled beforehand)
+                    #Temporarily, I am setting these to 0 so the pivot_table works properly
+                    df2 = df2.copy() 
+                    df2['dose_val_rx'] = df2['dose_val_rx'].fillna(0)
                     val=df2.pivot_table(index='start_time',columns='drug_name',values='dose_val_rx')
                     df2=df2.pivot_table(index='start_time',columns='drug_name',values='stop_time')
                     #print(df2.shape)
@@ -537,5 +555,5 @@ class Generator():
             pickle.dump(metaDic, fp)
             
 
-
+#temp = Generator('cohort_non-icu_length_of_stay_7__I50', False, False, True, True, True, True, True, 'Mean', 24, 1, 0)
 

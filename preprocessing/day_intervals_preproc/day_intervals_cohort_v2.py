@@ -41,15 +41,15 @@ def get_visit_pts(mimic4_path:str, group_col:str, visit_col:str, admit_col:str, 
         
     else:
         visit = pd.read_csv(mimic4_path + "hosp/admissions.csv.gz", compression='gzip', header=0, index_col=None, parse_dates=[admit_col, disch_col])
-        visit['los']=visit[disch_col]-visit[admit_col]
+#        visit['los']=visit[disch_col]-visit[admit_col]
 
         visit[admit_col] = pd.to_datetime(visit[admit_col])
         visit[disch_col] = pd.to_datetime(visit[disch_col])        
-        visit['los']=pd.to_timedelta(visit[disch_col]-visit[admit_col],unit='h')
-        visit['los']=visit['los'].astype(str)
-        visit[['days', 'dummy','hours']] = visit['los'].str.split(' ', -1, expand=True)
-        visit['los']=pd.to_numeric(visit['days'])
-        visit=visit.drop(columns=['days', 'dummy','hours'])
+        visit['los']=pd.to_timedelta(visit[disch_col]-visit[admit_col],unit='h').dt.days
+#        visit['los']=visit['los'].astype(str)
+#        visit[['days', 'dummy','hours']] = visit['los'].str.split(' ', -1, expand=True)
+#        visit['los']=pd.to_numeric(visit['days'])
+#        visit=visit.drop(columns=['days', 'dummy','hours'])
         
         
         if use_admn:
@@ -307,7 +307,7 @@ def extract_data(use_ICU:str, label:str, time:int, icd_code:str, root_dir, disea
         death_col='dod'
 
     pts = get_visit_pts(
-        mimic4_path=root_dir+"/mimiciv/2.0/",
+        mimic4_path=os.path.realpath(root_dir+"/mimiciv/2.2/")+"/",
         group_col=group_col,
         visit_col=visit_col,
         admit_col=admit_col,
@@ -340,7 +340,7 @@ def extract_data(use_ICU:str, label:str, time:int, icd_code:str, root_dir, disea
     #print(cohort.head())
     
     if use_disease:
-        hids=disease_cohort.extract_diag_cohort(cohort['hadm_id'],icd_code,root_dir+"/mimiciv/2.0/")
+        hids=disease_cohort.extract_diag_cohort(cohort['hadm_id'],icd_code,root_dir+"/mimiciv/2.2")
         #print(hids.shape)
         #print(cohort.shape)
         #print(len(list(set(hids['hadm_id'].unique()).intersection(set(cohort['hadm_id'].unique())))))
@@ -379,14 +379,16 @@ if __name__ == '__main__':
 
     response = input('Extra all datasets? (y/n)').strip().lower()
     if response == 'y':
-        extract_data("ICU", "Mortality")
-        extract_data("Non-ICU", "Mortality")
+#        extract_data("ICU", "Mortality")
+#        extract_data("Non-ICU", "Mortality")
 
-        extract_data("ICU", "30 Day Readmission")
-        extract_data("Non-ICU", "30 Day Readmission")
+#        extract_data("ICU", "30 Day Readmission")
+#        extract_data("Non-ICU", "30 Day Readmission")
 
-        extract_data("ICU", "60 Day Readmission")
-        extract_data("Non-ICU", "60 Day Readmission")
+        extract_data("Non-ICU", "Length of Stay", 7, "I50", "/Users/yge/Documents/GitHub/MIMIC-IV-Data-Pipeline/", "")
 
-        extract_data("ICU", "120 Day Readmission")
-        extract_data("Non-ICU", "120 Day Readmission")
+#        extract_data("ICU", "60 Day Readmission")
+#        extract_data("Non-ICU", "60 Day Readmission")
+
+#        extract_data("ICU", "120 Day Readmission")
+#        extract_data("Non-ICU", "120 Day Readmission")

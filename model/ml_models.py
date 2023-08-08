@@ -182,6 +182,7 @@ class ML_models():
         y_df=pd.DataFrame()   
         features=[]
         #print(ids)
+        n = 0
         for sample in ids:
             if self.data_icu:
                 y=labels[labels['stay_id']==sample]['label']
@@ -249,6 +250,10 @@ class ML_models():
                 y_df=y
             else:
                 y_df=pd.concat([y_df,y],axis=0)
+            
+            print(n)
+            n += 1
+            
 #             print("X_df",X_df.shape)
 #             print("y_df",y_df.shape)
         print("X_df",X_df.shape)
@@ -291,3 +296,4 @@ class ML_models():
                 
                 
 
+#ml = ML_models(False,5,'Gradient Bossting', True, True)

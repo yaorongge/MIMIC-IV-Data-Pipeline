@@ -170,7 +170,7 @@ def generate_summary_hosp(diag_flag,proc_flag,med_flag,lab_flag):
             if labs.empty:
                 labs=chunk
             else:
-                labs=labs.append(chunk, ignore_index=True)
+                labs = pd.concat([labs, chunk], ignore_index=True)
         freq=labs.groupby(['hadm_id','itemid']).size().reset_index(name="mean_frequency")
         freq=freq.groupby(['itemid'])['mean_frequency'].mean().reset_index()
         
