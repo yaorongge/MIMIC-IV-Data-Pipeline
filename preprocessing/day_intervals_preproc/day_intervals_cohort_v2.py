@@ -46,6 +46,7 @@ def get_visit_pts(mimic4_path:str, group_col:str, visit_col:str, admit_col:str, 
         visit[admit_col] = pd.to_datetime(visit[admit_col])
         visit[disch_col] = pd.to_datetime(visit[disch_col])        
         visit['los']=pd.to_timedelta(visit[disch_col]-visit[admit_col],unit='h').dt.days
+        
 #        visit['los']=visit['los'].astype(str)
 #        visit[['days', 'dummy','hours']] = visit['los'].str.split(' ', -1, expand=True)
 #        visit['los']=pd.to_numeric(visit['days'])
