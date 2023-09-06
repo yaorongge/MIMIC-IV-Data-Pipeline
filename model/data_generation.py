@@ -10,6 +10,8 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + './../..')
 if not os.path.exists("./data/dict"):
     os.makedirs("./data/dict")
+if not os.path.exists("./data/csv"):
+    os.makedirs("./data/csv")
     
 class Generator():
     def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_lab,feat_proc,feat_med,impute,include_time=24,bucket=1,predW=0):
@@ -60,6 +62,7 @@ class Generator():
         data['admittime'] = pd.to_datetime(data['admittime'])
         data['dischtime'] = pd.to_datetime(data['dischtime'])
         data['los']=pd.to_timedelta(data['dischtime']-data['admittime'],unit='h')
+# str type does work, dt.days is a better method anyway
 #        data['los']=data['los'].astype(str)
 #        data[['days', 'dummy','hours']] = data['los'].str.split(' ', -1, expand=True)
 #        data[['hours','min','sec']] = data['hours'].str.split(':', -1, expand=True)
@@ -269,6 +272,7 @@ class Generator():
                 sub_meds=sub_meds.reset_index()
                 sub_meds['start_time']=t
                 sub_meds['stop_time']=sub_meds['stop_time']/bucket
+# Note: DF.append no longer works, use DF.concat instead.
 #                if final_meds.empty:
 #                    final_meds=sub_meds
 #                else:
@@ -329,6 +333,11 @@ class Generator():
         labels_csv=pd.DataFrame(columns=['hadm_id','label'])
         labels_csv['hadm_id']=pd.Series(self.hids)
         labels_csv['label']=0
+
+        dyn_all = pd.DataFrame()
+        demo_all = pd.DataFrame()
+        grp_all = pd.DataFrame()
+
         for hid in self.hids:
             grp=self.data[self.data['hadm_id']==hid]
             #print(grp.head())
@@ -340,9 +349,12 @@ class Generator():
         for hid in tqdm(self.hids):
             grp=self.data[self.data['hadm_id']==hid]
             demo_csv=grp[['Age','gender','ethnicity','insurance']]
-            if not os.path.exists("./data/csv/"+str(hid)):
-                os.makedirs("./data/csv/"+str(hid))
-            demo_csv.to_csv('./data/csv/'+str(hid)+'/demo.csv',index=False)
+#            if not os.path.exists("./data/csv/"+str(hid)):
+#                os.makedirs("./data/csv/"+str(hid))
+#            demo_csv.to_csv('./data/csv/'+str(hid)+'/demo.csv',index=False)
+
+            demo_csv['hid'] = hid
+            demo_all = pd.concat([demo_all, demo_csv], axis=0)
             
             dyn_csv=pd.DataFrame()
             ###MEDS
@@ -481,7 +493,11 @@ class Generator():
                     dyn_csv=pd.concat([dyn_csv,val],axis=1)
             
             #Save temporal data to csv
-            dyn_csv.to_csv('./data/csv/'+str(hid)+'/dynamic.csv',index=False)
+#            dyn_csv.to_csv('./data/csv/'+str(hid)+'/dynamic.csv',index=False)
+#           Instead of saving one file per patient folder, save all the patients together into one file
+
+            dyn_csv['ids','hid'] = hid
+            dyn_all = pd.concat([dyn_all, dyn_csv], axis=0)
             
             ##########COND#########
             if(self.feat_cond):
@@ -502,10 +518,17 @@ class Generator():
                     grp=grp.fillna(0)
                     grp=grp[feat]
                     grp.columns=pd.MultiIndex.from_product([["COND"], grp.columns])
-            grp.to_csv('./data/csv/'+str(hid)+'/static.csv',index=False)   
-            labels_csv.to_csv('./data/csv/labels.csv',index=False)    
+#            grp.to_csv('./data/csv/'+str(hid)+'/static.csv',index=False)   
+#            labels_csv.to_csv('./data/csv/labels.csv',index=False)    
                 
-                
+            grp['ids','hid'] = hid
+            grp_all = pd.concat([grp_all, grp], axis=0)
+        
+        labels_csv.to_csv('./data/csv/labels.csv',index=False)    
+        dyn_all.to_csv('./data/csv/dynamic_all.csv',index=False)
+        demo_all.to_csv('./data/csv/demo_all.csv',index=False)
+        grp_all.to_csv('./data/csv/static_all.csv',index=False)
+
         ######SAVE DICTIONARIES##############
         metaDic={'Cond':{},'Proc':{},'Med':{},'Lab':{},'LOS':{}}
         metaDic['LOS']=los
@@ -555,5 +578,6 @@ class Generator():
             pickle.dump(metaDic, fp)
             
 
-#temp = Generator('cohort_non-icu_length_of_stay_7__I50', False, False, True, True, True, True, True, 'Mean', 24, 1, 0)
+if __name__ == '__main__':
+    temp = Generator('cohort_non-icu_length_of_stay_7__I50', False, False, True, True, True, True, True, 'Mean', 24, 1, 0)
 

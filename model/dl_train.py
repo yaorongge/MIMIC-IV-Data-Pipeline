@@ -96,7 +96,6 @@ class DL_models():
         
         if (self.k_fold==0):
             k_fold=5
-            self.k_fold=1
         else:
             k_fold=self.k_fold
         hids=labels.iloc[:,0]
@@ -120,10 +119,10 @@ class DL_models():
         for i in range(0,k_fold):
             rids = random.sample(ids, batch_size)
             ids = list(set(ids)-set(rids))
-            if i==0:
-                k_hids.append(hids[rids])             
-            else:
-                k_hids.append(hids[rids])
+#            if i==0:
+#                k_hids.append(hids[rids])             
+#            else:
+            k_hids.append(hids[rids])
         return k_hids
 
 
@@ -131,7 +130,24 @@ class DL_models():
         k_hids=self.create_kfolds()
         
         labels=pd.read_csv('./data/csv/labels.csv', header=0)
-        for i in range(self.k_fold):
+#
+# In the revised data_generation, data for all patients are stored in one file 
+# Read them in here and then select data for each patient based on 'hid'
+#
+        dyn_all = pd.read_csv('./data/csv/dynamic_all.csv', header=[0,1])
+        demo_all = pd.read_csv('./data/csv/demo_all.csv', header=0)
+        static_all = pd.read_csv('./data/csv/static_all.csv', header=[0,1])
+
+        print("Finished reading all data files......")
+
+        folds = self.k_fold
+        if folds == 0:
+            folds = 5
+            passes = 1
+        else:
+            passes = folds
+
+        for i in range(passes):
             self.create_model(self.model_type)
             print("[ MODEL CREATED ]")
             print(self.net)
@@ -139,7 +155,7 @@ class DL_models():
             
             test_hids=list(k_hids[i])
             #test_hids=test_hids[0:200]
-            train_ids=list(set([0,1,2,3,4])-set([i]))
+            train_ids=list(set(range(folds))-set([i]))
             train_hids=[]
             for j in train_ids:
                 train_hids.extend(k_hids[j])  
@@ -161,7 +177,7 @@ class DL_models():
             
                 print("======= EPOCH {:.1f} ========".format(epoch))
                 for nbatch in range(int(len(train_hids)/(args.batch_size))):
-                    meds,chart,out,proc,lab,stat_train,demo_train,Y_train=self.getXY(train_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size],labels)
+                    meds,chart,out,proc,lab,stat_train,demo_train,Y_train=self.getXY(train_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size],labels, dyn_all, static_all, demo_all)
 #                     print(chart.shape)
 #                     print(meds.shape)
 #                     print(stat_train.shape)
@@ -178,7 +194,7 @@ class DL_models():
                 #print(train_prob)
                 #print(train_truth)
                 self.loss(torch.tensor(train_prob),torch.tensor(train_truth),torch.tensor(train_logits),False,False)
-                val_loss=self.model_val(val_hids)
+                val_loss=self.model_val(val_hids, dyn_all, static_all, demo_all)
                 #print("Updating Model")
                 #T.save(self.net,self.save_path)
                 if(val_loss<=min_loss+0.02):
@@ -190,10 +206,10 @@ class DL_models():
                 else:
                     print("No improvement in Validation results")
                     counter=counter+1
-            self.model_test(test_hids)
+            self.model_test(test_hids, dyn_all, static_all, demo_all)
             self.save_output()
             
-    def model_val(self,val_hids):
+    def model_val(self,val_hids, dyn_all, static_all, demo_all):
         print("======= VALIDATION ========")
         labels=pd.read_csv('./data/csv/labels.csv', header=0)
         
@@ -203,7 +219,7 @@ class DL_models():
         self.net.eval()
         #print(len(val_hids))
         for nbatch in range(int(len(val_hids)/(args.batch_size))):
-            meds,chart,out,proc,lab,stat_train,demo_train,y=self.getXY(val_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size],labels)
+            meds,chart,out,proc,lab,stat_train,demo_train,y=self.getXY(val_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size],labels, dyn_all, static_all, demo_all)
             
 #             print(chart.shape)
 #             print(meds.shape)
@@ -229,7 +245,7 @@ class DL_models():
         val_loss=self.loss(torch.tensor(val_prob),torch.tensor(val_truth),torch.tensor(val_logits),True,False)
         return val_loss.item()
             
-    def model_test(self,test_hids):
+    def model_test(self,test_hids, dyn_all, static_all, demo_all):
         
         print("======= TESTING ========")
         labels=pd.read_csv('./data/csv/labels.csv', header=0)
@@ -245,7 +261,7 @@ class DL_models():
         #print(len(test_hids))
         for nbatch in range(int(len(test_hids)/(args.batch_size))):
             #print(test_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size])
-            meds,chart,out,proc,lab,stat,demo,y=self.getXY(test_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size],labels)
+            meds,chart,out,proc,lab,stat,demo,y=self.getXY(test_hids[nbatch*args.batch_size:(nbatch+1)*args.batch_size],labels, dyn_all, static_all, demo_all)
             
             output,logits = self.net(meds,chart,out,proc,lab,stat,demo)
 #             self.model_interpret([meds,chart,out,proc,lab,stat,demo])
@@ -284,7 +300,7 @@ class DL_models():
         torch.backends.cudnn.enabled=True
         
         
-    def getXY(self,ids,labels):
+    def getXY(self,ids,labels, dyn_all, static_all, demo_all):
         dyn_df=[]
         meds=torch.zeros(size=(0,0))
         chart=torch.zeros(size=(0,0))
@@ -295,8 +311,8 @@ class DL_models():
         demo_df=torch.zeros(size=(1,0))
         y_df=[]
         #print(ids)
-        dyn=pd.read_csv('./data/csv/'+str(ids[0])+'/dynamic.csv',header=[0,1])
-        keys=dyn.columns.levels[0]
+#        dyn=pd.read_csv('./data/csv/'+str(ids[0])+'/dynamic.csv',header=[0,1])
+        keys=dyn_all.columns.levels[0]
 #         print("keys",keys)
         for i in range(len(keys)):
             dyn_df.append(torch.zeros(size=(1,0)))
@@ -309,7 +325,8 @@ class DL_models():
             y_df.append(int(y))
 #             print(sample)
 #             print("y_df",y_df)
-            dyn=pd.read_csv('./data/csv/'+str(sample)+'/dynamic.csv',header=[0,1])
+#            dyn=pd.read_csv('./data/csv/'+str(sample)+'/dynamic.csv',header=[0,1])
+            dyn = dyn_all[dyn_all['ids','hid']==sample].copy()
             #print(dyn)
             for key in range(len(keys)):
 #                 print("key",key)
@@ -330,7 +347,8 @@ class DL_models():
             
 #                 print(dyn_df[key].shape)        
             
-            stat=pd.read_csv('./data/csv/'+str(sample)+'/static.csv',header=[0,1])
+#            stat=pd.read_csv('./data/csv/'+str(sample)+'/static.csv',header=[0,1])
+            stat = static_all[static_all['ids','hid']==sample].copy()
             stat=stat['COND']
             stat=stat.to_numpy()
             stat=torch.tensor(stat)
@@ -342,7 +360,8 @@ class DL_models():
             else:
                 stat_df=stat
 #             print(stat_df)    
-            demo=pd.read_csv('./data/csv/'+str(sample)+'/demo.csv',header=0)
+#            demo=pd.read_csv('./data/csv/'+str(sample)+'/demo.csv',header=0)
+            demo = demo_all[demo_all['hid']==sample].copy()
             #print(demo["gender"])
             demo["gender"].replace(self.gender_vocab, inplace=True)
             #print(demo["gender"])
@@ -500,4 +519,5 @@ class DL_models():
         with open('./data/output/'+'outputDict', 'wb') as fp:
                pickle.dump(output_df, fp)
 
-#model=DL_models(False,True,False,False,False,False,True,'Hybrid CNN',0,True,model_name='attn_icu_read',train=True)
+if __name__ == '__main__':
+    model=DL_models(False,True,False,False,False,False,True,'Time-series CNN',0,True,model_name='attn_icu_read',train=True)

@@ -28,6 +28,13 @@ def get_visit_pts(mimic4_path:str, group_col:str, visit_col:str, admit_col:str, 
     visit = None # df containing visit information depending on using ICU or not
     if use_ICU:
         visit = pd.read_csv(mimic4_path + "icu/icustays.csv.gz", compression='gzip', header=0, index_col=None, parse_dates=[admit_col, disch_col])
+
+#########
+######### The following will reduce the visit size to about 1/10 (40k instead of 400k) 
+######### It's probably a good idea to make this range a user selectable parameter.
+#########
+        visit = visit[visit[admit_col] < pd.to_datetime('1/1/2122')].copy()   # Note the year is based on anchor year
+      
         if use_admn:
             # icustays doesn't have a way to identify if patient died during visit; must
             # use core/patients to remove such stay_ids for readmission labels
@@ -47,11 +54,17 @@ def get_visit_pts(mimic4_path:str, group_col:str, visit_col:str, admit_col:str, 
         visit[disch_col] = pd.to_datetime(visit[disch_col])        
         visit['los']=pd.to_timedelta(visit[disch_col]-visit[admit_col],unit='h').dt.days
         
+# This part doesn't work and the above "dt.days" approach is better anyway 
 #        visit['los']=visit['los'].astype(str)
 #        visit[['days', 'dummy','hours']] = visit['los'].str.split(' ', -1, expand=True)
 #        visit['los']=pd.to_numeric(visit['days'])
 #        visit=visit.drop(columns=['days', 'dummy','hours'])
-        
+
+#########
+######### The following will reduce the visit size to about 1/10 (40k instead of 400k) 
+######### It's probably a good idea to make this range a user selectable parameter.
+#########
+        visit = visit[visit[admit_col] < pd.to_datetime('1/1/2122')].copy()   # Note the year is based on anchor year
         
         if use_admn:
             # remove hospitalizations with a death; impossible for readmission for such visits
@@ -386,7 +399,7 @@ if __name__ == '__main__':
 #        extract_data("ICU", "30 Day Readmission")
 #        extract_data("Non-ICU", "30 Day Readmission")
 
-        extract_data("Non-ICU", "Length of Stay", 7, "I50", "/Users/yge/Documents/GitHub/MIMIC-IV-Data-Pipeline/", "")
+        extract_data("Non-ICU", "Length of Stay", 7, "I50", "/Users/yge/Documents/Yaorong/Development/MIMIC-IV-Data-Pipeline/", "")
 
 #        extract_data("ICU", "60 Day Readmission")
 #        extract_data("Non-ICU", "60 Day Readmission")
