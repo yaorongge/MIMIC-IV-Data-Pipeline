@@ -83,7 +83,7 @@ def fairness_evaluation(inputFile, outputFile):
 
 
     def highlight(s):
-        colors = [['background-color: yellow'], ['background-color: green'], ['background-color: red']]
+        colors = [['background-color: blue'], ['background-color: green'], ['background-color: red']]
         return colors[report_groups[s.sensitive_attribute]%len(colors)] * len(s)
 
 

@@ -54,6 +54,13 @@ class ML_models():
         print("Total Samples",len(hids))
         print("Positive Samples",y.sum())
         #print(len(hids))
+
+#
+# Note: Oversampling here is not correct. The test data will include 
+# many oversampled instances and thus inflate the quality of model. 
+# Should divide into train and test first, and then oversample only the 
+# train data.
+#
         if self.oversampling:
             print("=============OVERSAMPLING===============")
             oversample = RandomOverSampler(sampling_strategy='minority')
@@ -91,6 +98,26 @@ class ML_models():
 
         print("Finished reading all data files......")
 
+#
+# Let's remove the columns that are mostly 0's (80% for now) in dyn_all.
+# That is, if a lab test has values for only a few patients, we won't use it.
+#
+        fdim = dyn_all.shape[1]
+        dyn_all_patient = dyn_all.groupby([('ids','hid')]).sum() #dyn_all has more than one row per patient
+        pz = int(.8 * len(dyn_all_patient)) 
+        zc = dyn_all_patient.eq(0).sum().ge(pz)
+        dyn_all1 = dyn_all[dyn_all.columns[:-1][~zc]] # due to groupby, hid column is lost in zc, thus direct use of ~zc doesn't work
+        dyn_all = pd.concat([dyn_all1, dyn_all['ids','hid']], axis=1) # now add the hid column back
+        print(f'Dynamic data: feature dimension {fdim} --> {dyn_all.shape[1]}')
+
+#
+# Let's remove the columns that are mostly 0's (80% for now) in static_all
+#
+        fdim = static_all.shape[1]
+        pz = int(.8 * len(static_all))
+        zc = static_all.eq(0).sum().ge(pz)
+        static_all = static_all.loc[:, ~zc]
+        print(f'Static data: feature dimension {fdim} --> {static_all.shape[1]}')
 
         folds = self.k_fold
         if folds == 0:
@@ -115,6 +142,7 @@ class ML_models():
 #                dyn=pd.read_csv('./data/csv/'+str(train_hids[0])+'/dynamic.csv',header=[0,1])
                 dyn = dyn_all[dyn_all['ids','hid']==train_hids[0]].copy()
 
+                dyn = dyn.drop(columns=['ids'])
                 dyn.columns=dyn.columns.droplevel(0)
                 cols=dyn.columns
                 time=dyn.shape[0]
@@ -275,10 +303,11 @@ class ML_models():
                 y=labels[labels['hadm_id']==sample]['label']
             
             #print(sample)
-            dyn=dynamic_all[dynamic_all['ids','hid']==sample].copy() # may not need a deep copy??? 
+            dyn = dynamic_all[dynamic_all['ids','hid']==sample].copy() # may not need a deep copy??? 
+            dyn = dyn.drop(columns=['ids'])
             
             if self.concat:
-#                dyn.columns=dyn.columns.droplevel(0)
+                dyn.columns=dyn.columns.droplevel(0)
                 dyn=dyn.to_numpy()
                 dyn=dyn.reshape(1,-1)
                 #print(dyn.shape)
@@ -320,10 +349,11 @@ class ML_models():
 #             print(dyn_df.shape)
 #             print(dyn_df.head())
             stat=static_all[static_all['ids','hid']==sample].copy()
-            stat=stat['COND']
+            stat=stat['COND'] # this removes the ids/hid column 
 #             print(stat.shape)
 #             print(stat.head())
-            demo=demo_all[demo_all['hid']==sample]
+            demo = demo_all[demo_all['hid']==sample]
+            demo = demo.drop(columns=['hid'])
 #             print(demo.shape)
 #             print(demo.head())
 

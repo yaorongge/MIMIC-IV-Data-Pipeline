@@ -942,7 +942,7 @@ class CNNBase(nn.Module):
         out1=torch.zeros(size=(0,0))
         
         if meds.shape[0]:
-            medEmbedded=self.med(med)
+            medEmbedded=self.med(meds)
             
             if out1.nelement():
                 out1=torch.cat((out1,medEmbedded),2)

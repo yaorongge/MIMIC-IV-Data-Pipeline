@@ -86,8 +86,8 @@ class Generator():
 #        proc[['start_days', 'dummy','start_hours']] = proc['event_time_from_admit'].str.split(' ', -1, expand=True)
 #        proc[['start_hours','min','sec']] = proc['start_hours'].str.split(':', -1, expand=True)
 #        proc['start_time']=pd.to_numeric(proc['start_days'])*24+pd.to_numeric(proc['start_hours'])
-        proc['start_days'] = pd.to_timedelta(proc['proc_time_from_admit']).dt.days
-        proc['start_hours'] = pd.to_timedelta(proc['proc_time_from_admit']).dt.seconds
+        proc['start_days'] = pd.to_timedelta(proc['event_time_from_admit']).dt.days
+        proc['start_hours'] = pd.to_timedelta(proc['event_time_from_admit']).dt.seconds
         proc['start_time']=pd.to_numeric(proc['start_days'])*24+pd.to_numeric(proc['start_hours'])/3600
 
         proc=proc.drop(columns=['start_days', 'start_hours'])
@@ -713,10 +713,6 @@ class Generator():
 
             grp['ids','hid'] = hid
             grp_all = pd.concat([grp_all, grp], axis=0)
-
-#
-# Let's remove the columns that mostly 0's (80% for now) in dyn_all and static_all
-#
 
         labels_csv.to_csv('./data/csv/labels.csv',index=False)    
         dyn_all.to_csv('./data/csv/dynamic_all.csv',index=False)

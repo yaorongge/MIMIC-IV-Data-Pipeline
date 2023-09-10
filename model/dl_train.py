@@ -140,6 +140,29 @@ class DL_models():
 
         print("Finished reading all data files......")
 
+# Unfortunately the following doesn't work because the network is created based on 
+# information saved in files _vocab_ files under /data/dict.  
+#
+# Let's remove the columns that are mostly 0's (80% for now) in dyn_all.
+# That is, if a lab test has values for only a few patients, we won't use it.
+#
+#        fdim = dyn_all.shape[1]
+#        dyn_all_patient = dyn_all.groupby([('ids','hid')]).sum() #dyn_all has more than one row per patient
+#        pz = int(.8 * len(dyn_all_patient)) 
+#        zc = dyn_all_patient.eq(0).sum().ge(pz)
+#        dyn_all1 = dyn_all[dyn_all.columns[:-1][~zc]] # due to groupby, hid column is lost in zc, thus direct use of ~zc doesn't work
+#        dyn_all = pd.concat([dyn_all1, dyn_all['ids','hid']], axis=1) # now add the hid column back
+#        print(f'Dynamic data: feature dimension {fdim} --> {dyn_all.shape[1]}')
+#
+#
+# Let's remove the columns that are mostly 0's (80% for now) in static_all
+#
+#        fdim = static_all.shape[1]
+#        pz = int(.8 * len(static_all))
+#        zc = static_all.eq(0).sum().ge(pz)
+#        static_all = static_all.loc[:, ~zc]
+#        print(f'Static data: feature dimension {fdim} --> {static_all.shape[1]}')
+
         folds = self.k_fold
         if folds == 0:
             folds = 5
@@ -313,6 +336,7 @@ class DL_models():
         #print(ids)
 #        dyn=pd.read_csv('./data/csv/'+str(ids[0])+'/dynamic.csv',header=[0,1])
         keys=dyn_all.columns.levels[0]
+        keys = keys[:-1] # remove the 'ids' key since it is not a feature
 #         print("keys",keys)
         for i in range(len(keys)):
             dyn_df.append(torch.zeros(size=(1,0)))
@@ -327,6 +351,7 @@ class DL_models():
 #             print("y_df",y_df)
 #            dyn=pd.read_csv('./data/csv/'+str(sample)+'/dynamic.csv',header=[0,1])
             dyn = dyn_all[dyn_all['ids','hid']==sample].copy()
+            dyn = dyn.drop(columns=[('ids','hid')]) # remove the ids/hid column
             #print(dyn)
             for key in range(len(keys)):
 #                 print("key",key)
@@ -349,7 +374,7 @@ class DL_models():
             
 #            stat=pd.read_csv('./data/csv/'+str(sample)+'/static.csv',header=[0,1])
             stat = static_all[static_all['ids','hid']==sample].copy()
-            stat=stat['COND']
+            stat=stat['COND'] # this removes the ids/hid column, no drop needed here
             stat=stat.to_numpy()
             stat=torch.tensor(stat)
 #             print(stat.shape)
@@ -362,6 +387,8 @@ class DL_models():
 #             print(stat_df)    
 #            demo=pd.read_csv('./data/csv/'+str(sample)+'/demo.csv',header=0)
             demo = demo_all[demo_all['hid']==sample].copy()
+            demo = demo.drop(columns=['hid']) # remove the hid column
+
             #print(demo["gender"])
             demo["gender"].replace(self.gender_vocab, inplace=True)
             #print(demo["gender"])
@@ -520,4 +547,4 @@ class DL_models():
                pickle.dump(output_df, fp)
 
 if __name__ == '__main__':
-    model=DL_models(False,True,False,False,False,False,True,'Time-series CNN',0,True,model_name='attn_icu_read',train=True)
+    model=DL_models(True,True,True,False,True,True,False,'Time-series CNN',5,oversampling=False,model_name='attn_icu_read',train=True)
